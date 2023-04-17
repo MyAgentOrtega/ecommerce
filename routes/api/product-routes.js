@@ -59,7 +59,7 @@ router.post('/', (req, res) => {
   Product.create(req.body)
     .then((product) => {
       // if there's product tags, we need to create pairings to bulk create in the ProductTag model
-      if (req.body.tagIds.length) {
+      if (req.body.tagIds && req.body.tagIds.length) {
         const productTagIdArr = req.body.tagIds.map((tag_id) => {
           return {
             product_id: product.id,
@@ -80,6 +80,10 @@ router.post('/', (req, res) => {
 
 // update product
 router.put('/:id', (req, res) => {
+  console.log("Req.body: ", req.body);
+  console.log("Req.body: ", req.body);
+  console.log("Req.params: ", req.params);
+
   // update product data
   Product.update(req.body, {
     where: {
@@ -88,11 +92,17 @@ router.put('/:id', (req, res) => {
   })
     .then((product) => {
       // find all associated tags from ProductTag
+     // console.log("Product: ", product); 
+      
       return ProductTag.findAll({ where: { product_id: req.params.id } });
     })
     .then((productTags) => {
       // get list of current tag_ids
+      //console.log("Product Tags: ", productTags); 
+      
+      // here we serialize the Db data
       const productTagIds = productTags.map(({ tag_id }) => tag_id);
+      console.log("Product Tags: ", productTagIds); 
       // create filtered list of new tag_ids
       const newProductTags = req.body.tagIds
         .filter((tag_id) => !productTagIds.includes(tag_id))
@@ -115,8 +125,8 @@ router.put('/:id', (req, res) => {
     })
     .then((updatedProductTags) => res.json(updatedProductTags))
     .catch((err) => {
-      // console.log(err);
-      res.status(400).json(err);
+      console.log(err);
+      res.status(400).json({ message: err });
     });
 });
 
@@ -128,6 +138,8 @@ router.delete('/:id', (req, res) => {
     },
   })
   .then((product) => {
+    console.log("Delete Method: ", product);
+
       // find all associated tags from ProductTag
       return ProductTag.findAll({ where: { product_id: req.params.id } });
     })
@@ -144,7 +156,11 @@ router.delete('/:id', (req, res) => {
         ProductTag.destroy({ where: { id: productTags } }),
         ProductTag.bulkCreate(newProductTags),
       ]);
-    })
+  }).then(() => res.status(200).json({ message: 'Product deleted!' }))
+  .catch((err) => {
+      console.log(err);
+      res.status(500).json(err);
+    });
 });
 
 module.exports = router;
